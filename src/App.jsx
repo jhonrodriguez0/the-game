@@ -8,20 +8,20 @@ import BottomNav from './components/BottomNav'
 
 function AppContent() {
   const [tab, setTab] = useState('today')
-  const { autoClosePastDays, initTodayLog } = useStore()
+  const { autoClosePastDays, initAllTodayLogs } = useStore()
 
   useEffect(() => {
     autoClosePastDays()
-    initTodayLog()
-  }, [autoClosePastDays, initTodayLog])
+    initAllTodayLogs()
+  }, [autoClosePastDays, initAllTodayLogs])
 
   return (
     <div className="flex flex-col h-full max-w-[430px] mx-auto bg-bg">
       <div className="flex-1 overflow-hidden">
-        {tab === 'today' && <Today />}
-        {tab === 'cycle' && <Cycle />}
+        {tab === 'today'   && <Today />}
+        {tab === 'cycle'   && <Cycle />}
         {tab === 'metrics' && <Metrics />}
-        {tab === 'config' && <Config onCycleStarted={() => setTab('today')} />}
+        {tab === 'config'  && <Config onCycleStarted={() => setTab('today')} />}
       </div>
       <BottomNav activeTab={tab} onTabChange={setTab} />
     </div>

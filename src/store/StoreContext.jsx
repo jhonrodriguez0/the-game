@@ -4,9 +4,7 @@ function loadLS(key, fallback) {
   try {
     const raw = localStorage.getItem(key)
     return raw !== null ? JSON.parse(raw) : fallback
-  } catch {
-    return fallback
-  }
+  } catch { return fallback }
 }
 
 function saveLS(key, value) {
@@ -27,108 +25,140 @@ export function addDays(dateStr, n) {
   return d.toISOString().split('T')[0]
 }
 
+// Migrate old single-cycle data to array format
+function loadCycles() {
+  const existing = loadLS('tg_cycles_v2', null)
+  if (existing) return existing
+  // Migrate from old format
+  const oldCycle = loadLS('tg_cycle', null)
+  if (oldCycle) {
+    const cycles = [oldCycle]
+    saveLS('tg_cycles_v2', cycles)
+    return cycles
+  }
+  return []
+}
+
 const DEFAULT_METRIC_DEFS = [
   { id: 'def_weight', name: 'Peso', unit: 'kg' },
-  { id: 'def_sleep', name: 'Sueño', unit: 'h' },
+  { id: 'def_sleep',  name: 'Sueño', unit: 'h'  },
 ]
 
 const StoreContext = createContext(null)
 
 export function StoreProvider({ children }) {
-  const [cycle, setCycleState] = useState(() => loadLS('tg_cycle', null))
-  // [{date, metricId, value}]
-  const [metrics, setMetricsState] = useState(() => loadLS('tg_metrics_v2', []))
-  // [{id, name, unit}]
-  const [metricDefs, setMetricDefsState] = useState(
-    () => loadLS('tg_metric_defs', DEFAULT_METRIC_DEFS)
-  )
-  const [history, setHistoryState] = useState(() => loadLS('tg_history', []))
+  const [cycles, setCycles] = useState(() => loadCycles())
+  const [metrics, setMetrics] = useState(() => loadLS('tg_metrics_v2', []))
+  const [metricDefs, setMetricDefs] = useState(() => loadLS('tg_metric_defs', DEFAULT_METRIC_DEFS))
+
+  const activeCycles = cycles.filter(c => c.active)
+  const history = cycles.filter(c => !c.active)
+
+  function updateCycle(id, updater) {
+    setCycles(prev => {
+      const updated = prev.map(c => c.id === id ? updater(c) : c)
+      saveLS('tg_cycles_v2', updated)
+      return updated
+    })
+  }
 
   const autoClosePastDays = useCallback(() => {
-    setCycleState(prev => {
-      if (!prev || !prev.active) return prev
-      const today = todayStr()
+    const today = todayStr()
+    setCycles(prev => {
+      let anyChanged = false
+      const next = prev.map(cycle => {
+        if (!cycle.active) return cycle
+        let changed = false
+        const log = { ...cycle.log }
+        Object.keys(log).forEach(date => {
+          if (date < today) {
+            const dl = { ...log[date] }
+            let dc = false
+            Object.keys(dl).forEach(tid => {
+              if (dl[tid] === 'pending') { dl[tid] = 'missed'; dc = true }
+            })
+            if (dc) { log[date] = dl; changed = true }
+          }
+        })
+        if (!changed) return cycle
+        anyChanged = true
+        return { ...cycle, log }
+      })
+      if (!anyChanged) return prev
+      saveLS('tg_cycles_v2', next)
+      return next
+    })
+  }, [])
+
+  const initTodayLog = useCallback((cycleId) => {
+    const today = todayStr()
+    updateCycle(cycleId, cycle => {
+      if (cycle.log[today]) return cycle
+      const dl = {}
+      cycle.tasks.forEach(t => { dl[t.id] = 'pending' })
+      return { ...cycle, log: { ...cycle.log, [today]: dl } }
+    })
+  }, [])
+
+  const initAllTodayLogs = useCallback(() => {
+    const today = todayStr()
+    setCycles(prev => {
       let changed = false
-      const log = { ...prev.log }
-      Object.keys(log).forEach(date => {
-        if (date < today) {
-          const dayLog = { ...log[date] }
-          let dayChanged = false
-          Object.keys(dayLog).forEach(taskId => {
-            if (dayLog[taskId] === 'pending') {
-              dayLog[taskId] = 'missed'
-              dayChanged = true
-            }
-          })
-          if (dayChanged) { log[date] = dayLog; changed = true }
-        }
+      const next = prev.map(cycle => {
+        if (!cycle.active || cycle.log[today]) return cycle
+        const dl = {}
+        cycle.tasks.forEach(t => { dl[t.id] = 'pending' })
+        changed = true
+        return { ...cycle, log: { ...cycle.log, [today]: dl } }
       })
       if (!changed) return prev
-      const updated = { ...prev, log }
-      saveLS('tg_cycle', updated)
-      return updated
+      saveLS('tg_cycles_v2', next)
+      return next
     })
   }, [])
 
-  const initTodayLog = useCallback(() => {
-    setCycleState(prev => {
-      if (!prev || !prev.active) return prev
-      const today = todayStr()
-      if (prev.log[today]) return prev
-      const dayLog = {}
-      prev.tasks.forEach(t => { dayLog[t.id] = 'pending' })
-      const updated = { ...prev, log: { ...prev.log, [today]: dayLog } }
-      saveLS('tg_cycle', updated)
-      return updated
-    })
-  }, [])
-
-  const markTask = useCallback((date, taskId, status) => {
-    setCycleState(prev => {
-      if (!prev) return prev
-      const updated = {
-        ...prev,
-        log: { ...prev.log, [date]: { ...prev.log[date], [taskId]: status } }
+  const markTask = useCallback((cycleId, date, taskId, status) => {
+    updateCycle(cycleId, cycle => ({
+      ...cycle,
+      log: {
+        ...cycle.log,
+        [date]: { ...(cycle.log[date] || {}), [taskId]: status }
       }
-      saveLS('tg_cycle', updated)
+    }))
+  }, [])
+
+  const startCycle = useCallback((data) => {
+    const newCycle = { ...data, id: genId(), active: true, log: {} }
+    setCycles(prev => {
+      const updated = [...prev, newCycle]
+      saveLS('tg_cycles_v2', updated)
       return updated
     })
+    return newCycle.id
   }, [])
 
-  const startCycle = useCallback((cycleData) => {
-    const c = { ...cycleData, id: genId(), active: true, log: {} }
-    setCycleState(c)
-    saveLS('tg_cycle', c)
-  }, [])
-
-  const closeCycle = useCallback(() => {
-    setCycleState(prev => {
-      if (!prev) return null
-      const archived = { ...prev, active: false }
-      setHistoryState(hist => {
-        const newHist = [archived, ...hist]
-        saveLS('tg_history', newHist)
-        return newHist
-      })
-      saveLS('tg_cycle', null)
-      return null
+  const closeCycle = useCallback((id) => {
+    setCycles(prev => {
+      const updated = prev.map(c => c.id === id ? { ...c, active: false } : c)
+      saveLS('tg_cycles_v2', updated)
+      return updated
     })
   }, [])
 
   const saveMetricValue = useCallback((date, metricId, value) => {
-    setMetricsState(prev => {
+    setMetrics(prev => {
       const filtered = prev.filter(m => !(m.date === date && m.metricId === metricId))
       const updated = value !== '' && value != null
         ? [...filtered, { date, metricId, value: parseFloat(value) }]
         : filtered
-      updated.sort((a, b) => a.date.localeCompare(b.date) || a.metricId.localeCompare(b.metricId))
+      updated.sort((a, b) => a.date.localeCompare(b.date))
       saveLS('tg_metrics_v2', updated)
       return updated
     })
   }, [])
 
   const addMetricDef = useCallback((name, unit) => {
-    setMetricDefsState(prev => {
+    setMetricDefs(prev => {
       const updated = [...prev, { id: genId(), name: name.trim(), unit: unit.trim() }]
       saveLS('tg_metric_defs', updated)
       return updated
@@ -136,12 +166,12 @@ export function StoreProvider({ children }) {
   }, [])
 
   const removeMetricDef = useCallback((id) => {
-    setMetricDefsState(prev => {
+    setMetricDefs(prev => {
       const updated = prev.filter(d => d.id !== id)
       saveLS('tg_metric_defs', updated)
       return updated
     })
-    setMetricsState(prev => {
+    setMetrics(prev => {
       const updated = prev.filter(m => m.metricId !== id)
       saveLS('tg_metrics_v2', updated)
       return updated
@@ -150,8 +180,9 @@ export function StoreProvider({ children }) {
 
   return (
     <StoreContext.Provider value={{
-      cycle, metrics, metricDefs, history,
-      autoClosePastDays, initTodayLog, markTask,
+      cycles, activeCycles, history,
+      metrics, metricDefs,
+      autoClosePastDays, initAllTodayLogs, initTodayLog, markTask,
       startCycle, closeCycle,
       saveMetricValue, addMetricDef, removeMetricDef,
     }}>
