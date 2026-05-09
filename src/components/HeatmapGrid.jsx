@@ -1,78 +1,128 @@
 import { todayStr, addDays } from '../store/StoreContext'
 
-function getDayOfWeek(dateStr) {
-  const d = new Date(dateStr + 'T12:00:00')
-  return (d.getDay() + 6) % 7 // 0=Mon … 6=Sun
+function getDow(dateStr) {
+  return (new Date(dateStr + 'T12:00:00').getDay() + 6) % 7 // 0=Mon
 }
 
-function getCompletionRate(log, date, tasks) {
+function getRate(log, date, tasks) {
   const dayLog = log[date]
-  if (!dayLog || tasks.length === 0) return 0
-  const completed = tasks.filter(t => dayLog[t.id] === 'done' || dayLog[t.id] === 'rescued').length
-  return completed / tasks.length
+  if (!dayLog || !tasks.length) return null // null = no data yet
+  const done = tasks.filter(t => dayLog[t.id] === 'done' || dayLog[t.id] === 'rescued').length
+  return done / tasks.length
 }
 
 function hasRescue(log, date, tasks) {
-  const dayLog = log[date]
-  if (!dayLog) return false
-  return tasks.some(t => dayLog[t.id] === 'rescued')
+  const dl = log[date]
+  return dl ? tasks.some(t => dl[t.id] === 'rescued') : false
 }
 
-function cellColor(rate) {
-  if (rate === 0) return '#1E293B'
-  if (rate < 0.5) return '#1D4ED8'
-  if (rate < 1) return '#3B82F6'
-  return '#60A5FA'
+function cellStyle(rate, isFuture, isToday, rescue) {
+  let bg, textColor, border = 'none'
+
+  if (isFuture) {
+    bg = 'transparent'
+    textColor = '#282828'
+    border = '1px solid #181818'
+  } else if (rate === null || rate === 0) {
+    bg = '#0D0D0D'
+    textColor = '#2A2A2A'
+  } else if (rate < 0.5) {
+    bg = '#1C1C1C'
+    textColor = '#555'
+  } else if (rate < 1) {
+    bg = '#2E2E2E'
+    textColor = '#888'
+  } else {
+    bg = '#EBEBEB'
+    textColor = '#00000055'
+  }
+
+  if (rescue) border = '1.5px solid #F59E0B'
+  if (isToday) border = '1.5px solid #FFFFFF'
+
+  return { bg, textColor, border }
 }
 
-const DAY_LABELS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+const DOW = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
 export default function HeatmapGrid({ cycle, onDayTap }) {
   const today = todayStr()
-  const startOffset = getDayOfWeek(cycle.startDate)
+  const offset = getDow(cycle.startDate)
 
   const cells = []
-  for (let i = 0; i < startOffset; i++) {
-    cells.push({ empty: true, key: `e${i}` })
-  }
+  for (let i = 0; i < offset; i++) cells.push({ empty: true, key: `e${i}` })
 
   for (let i = 0; i < cycle.durationDays; i++) {
     const date = addDays(cycle.startDate, i)
-    const isFuture = date > today
-    const isToday = date === today
-    const rate = isFuture ? 0 : getCompletionRate(cycle.log, date, cycle.tasks)
-    const rescue = !isFuture && hasRescue(cycle.log, date, cycle.tasks)
-    cells.push({ date, isFuture, isToday, rate, rescue, key: date })
+    const d = new Date(date + 'T12:00:00')
+    cells.push({
+      key: date, date,
+      dayNum: d.getDate(),
+      isFuture: date > today,
+      isToday: date === today,
+      rate: date > today ? null : getRate(cycle.log, date, cycle.tasks),
+      rescue: hasRescue(cycle.log, date, cycle.tasks),
+    })
   }
 
   return (
     <div>
-      <div className="grid grid-cols-7 gap-1 mb-1">
-        {DAY_LABELS.map(d => (
-          <div key={d} className="text-center text-[10px] font-mono text-muted">{d}</div>
+      {/* Day-of-week headers */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 3 }}>
+        {DOW.map(d => (
+          <div key={d} style={{ textAlign: 'center', fontFamily: 'Inter', fontSize: 10, fontWeight: 600, color: '#3A3A3A', paddingBottom: 4 }}>
+            {d}
+          </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1">
+
+      {/* Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
         {cells.map(cell => {
-          if (cell.empty) return <div key={cell.key} className="aspect-square" />
+          if (cell.empty) return <div key={cell.key} style={{ aspectRatio: '1' }} />
+          const { bg, textColor, border } = cellStyle(cell.rate, cell.isFuture, cell.isToday, cell.rescue)
           return (
             <div
               key={cell.key}
-              onClick={() => !cell.isFuture && onDayTap(cell.date)}
-              className={`aspect-square rounded-sm ${!cell.isFuture ? 'cursor-pointer' : ''}`}
+              onClick={() => !cell.isFuture && onDayTap && onDayTap(cell.date)}
               style={{
-                backgroundColor: cell.isFuture ? 'transparent' : cellColor(cell.rate),
-                border: cell.rescue
-                  ? '1.5px solid #F59E0B'
-                  : cell.isToday
-                  ? '1.5px solid #3B82F6'
-                  : cell.isFuture
-                  ? '1px solid #334155'
-                  : 'none',
+                aspectRatio: '1',
+                backgroundColor: bg,
+                border,
+                borderRadius: 4,
+                cursor: cell.isFuture ? 'default' : 'pointer',
+                display: 'flex',
+                alignItems: 'flex-end',
+                justifyContent: 'flex-end',
+                padding: '3px 4px',
               }}
-            />
+            >
+              <span style={{
+                fontFamily: 'Inter',
+                fontSize: 9,
+                fontWeight: cell.isToday ? 800 : 500,
+                color: cell.isToday ? '#FFF' : textColor,
+              }}>
+                {cell.dayNum}
+              </span>
+            </div>
           )
         })}
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12, justifyContent: 'flex-end' }}>
+        {[
+          { bg: '#0D0D0D', label: '0%', border: '1px solid #222' },
+          { bg: '#1C1C1C', label: '1–49%' },
+          { bg: '#2E2E2E', label: '50–99%' },
+          { bg: '#EBEBEB', label: '100%' },
+        ].map(({ bg, label, border }) => (
+          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: bg, border: border || 'none', flexShrink: 0 }} />
+            <span style={{ fontFamily: 'Inter', fontSize: 9, color: '#444' }}>{label}</span>
+          </div>
+        ))}
       </div>
     </div>
   )

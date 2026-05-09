@@ -18,7 +18,7 @@ function formatDateHeader(dateStr) {
   }
 }
 
-const label = (text, color = '#555') => (
+const label = (text, color = '#FFF') => (
   <span style={{
     fontFamily: 'Inter, sans-serif',
     fontSize: 10,
@@ -72,7 +72,7 @@ export default function Today() {
       {/* Header */}
       <div className="flex items-end justify-between px-6 pt-8 pb-6" style={{ borderBottom: '1px solid #141414' }}>
         <div>
-          <p style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 500, letterSpacing: '0.14em', color: '#555', marginBottom: 6 }}>
+          <p style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 500, letterSpacing: '0.14em', color: '#FFF', marginBottom: 6 }}>
             {day}
           </p>
           <p style={{ fontFamily: 'Inter', fontSize: 36, fontWeight: 800, color: '#FFF', lineHeight: 1 }}>
@@ -106,7 +106,7 @@ export default function Today() {
         {PILLAR_ORDER.filter(p => pillars[p]).map(pillar => (
           <div key={pillar} className="px-6 pt-6">
             <div className="flex items-center gap-3 mb-1">
-              {label(PILLAR_LABELS[pillar])}
+              {label(PILLAR_LABELS[pillar], '#FFF')}
               <div className="flex-1" style={{ height: 1, backgroundColor: '#1C1C1C' }} />
             </div>
             {pillars[pillar].map(task => (

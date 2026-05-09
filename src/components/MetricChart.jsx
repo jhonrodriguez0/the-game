@@ -1,17 +1,12 @@
 import {
   LineChart, Line, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, ReferenceLine
+  ResponsiveContainer, ReferenceDot
 } from 'recharts'
-
-function CustomDot({ cx, cy, value }) {
-  if (value == null) return null
-  return <circle cx={cx} cy={cy} r={3} fill="#3B82F6" />
-}
 
 function CustomTooltip({ active, payload }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-surface border border-border px-2 py-1 rounded text-xs font-mono text-primary">
+    <div style={{ background: '#111', border: '1px solid #222', borderRadius: 6, padding: '6px 10px', fontFamily: 'Inter', fontSize: 13, color: '#FFF' }}>
       {payload[0].value}
     </div>
   )
@@ -20,26 +15,30 @@ function CustomTooltip({ active, payload }) {
 export default function MetricChart({ label, data }) {
   return (
     <div>
-      <div className="font-mono text-xs text-muted mb-3 tracking-wide">{label}</div>
-      {data.length < 2 ? (
-        <div
-          className="flex items-center justify-center text-muted text-[10px] font-mono border border-border rounded"
-          style={{ height: 100 }}
-        >
-          SIN DATOS SUFICIENTES
+      <p style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 600, letterSpacing: '0.14em', color: '#FFF', marginBottom: 12 }}>
+        {label}
+      </p>
+      {data.length === 0 ? (
+        <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #141414', borderRadius: 6 }}>
+          <span style={{ fontFamily: 'Inter', fontSize: 12, color: '#333' }}>Sin datos</span>
+        </div>
+      ) : data.length === 1 ? (
+        <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #141414', borderRadius: 6, gap: 12 }}>
+          <span style={{ fontFamily: 'Inter', fontSize: 11, color: '#888' }}>{data[0].date}</span>
+          <span style={{ fontFamily: 'Inter', fontSize: 22, fontWeight: 700, color: '#FFF' }}>{data[0].value}</span>
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={110}>
-          <LineChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: -24 }}>
+          <LineChart data={data} margin={{ top: 6, right: 6, bottom: 6, left: -20 }}>
             <XAxis
               dataKey="date"
-              tick={{ fill: '#64748B', fontSize: 9, fontFamily: 'Space Mono' }}
+              tick={{ fill: '#555', fontSize: 9, fontFamily: 'Inter' }}
               tickLine={false}
               axisLine={false}
               interval="preserveStartEnd"
             />
             <YAxis
-              tick={{ fill: '#64748B', fontSize: 9, fontFamily: 'Space Mono' }}
+              tick={{ fill: '#555', fontSize: 9, fontFamily: 'Inter' }}
               tickLine={false}
               axisLine={false}
               domain={['auto', 'auto']}
@@ -48,10 +47,10 @@ export default function MetricChart({ label, data }) {
             <Line
               type="monotone"
               dataKey="value"
-              stroke="#3B82F6"
-              strokeWidth={2}
-              dot={<CustomDot />}
-              activeDot={{ r: 4, fill: '#60A5FA' }}
+              stroke="#FFFFFF"
+              strokeWidth={1.5}
+              dot={{ fill: '#FFF', r: 3, strokeWidth: 0 }}
+              activeDot={{ r: 4, fill: '#FFF' }}
               connectNulls
             />
           </LineChart>
