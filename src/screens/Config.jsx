@@ -9,43 +9,71 @@ const PILLARS = [
   { id: 'mente',  label: 'MENTE'  },
   { id: 'alma',   label: 'ALMA'   },
 ]
+const PILLAR_LABEL = Object.fromEntries(PILLARS.map(p => [p.id, p.label]))
 
-function formatDate(dateStr) {
+function fmt(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr + 'T12:00:00')
   const months = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC']
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`
 }
 
-const PILLAR_LABEL = Object.fromEntries(PILLARS.map(p => [p.id, p.label]))
+const inputStyle = {
+  width: '100%',
+  background: '#0D0D0D',
+  border: '1px solid #1C1C1C',
+  borderRadius: 8,
+  padding: '13px 14px',
+  fontSize: 15,
+  fontFamily: 'Inter, sans-serif',
+  color: '#FFF',
+  outline: 'none',
+}
+
+const labelStyle = {
+  fontFamily: 'Inter, sans-serif',
+  fontSize: 10,
+  fontWeight: 600,
+  letterSpacing: '0.14em',
+  color: '#555',
+  display: 'block',
+  marginBottom: 8,
+}
+
+function emptyTask() {
+  return { id: genId(), name: '', pillar: 'fisico', why: '' }
+}
 
 function ActiveCycleView({ cycle, onNewCycle }) {
   const [confirm, setConfirm] = useState(false)
 
   return (
-    <div className="px-5 py-6">
-      <div className="mb-6">
-        <p className="font-mono text-[10px] text-muted tracking-widest mb-2">CICLO ACTIVO</p>
-        <p className="font-mono text-xl font-bold text-primary">{cycle.name}</p>
-        <p className="font-mono text-xs text-muted mt-1">
-          {formatDate(cycle.startDate)} — {formatDate(addDays(cycle.startDate, cycle.durationDays - 1))}
-          {' · '}{cycle.durationDays} días
-        </p>
-      </div>
+    <div className="px-6 py-8">
+      <p style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 600, letterSpacing: '0.14em', color: '#555', marginBottom: 8 }}>
+        CICLO ACTIVO
+      </p>
+      <p style={{ fontFamily: 'Inter', fontSize: 28, fontWeight: 800, color: '#FFF', lineHeight: 1, marginBottom: 8 }}>
+        {cycle.name}
+      </p>
+      <p style={{ fontFamily: 'Inter', fontSize: 13, color: '#444', marginBottom: 40 }}>
+        {fmt(cycle.startDate)} — {fmt(addDays(cycle.startDate, cycle.durationDays - 1))} · {cycle.durationDays} días
+      </p>
 
-      <p className="font-mono text-[10px] text-muted tracking-widest mb-3">TAREAS</p>
-      <div className="border border-border rounded-lg overflow-hidden mb-8">
-        {cycle.tasks.map((t, i) => (
+      <p style={{ ...labelStyle, marginBottom: 0 }}>TAREAS</p>
+      <div style={{ borderTop: '1px solid #141414', marginBottom: 40 }}>
+        {cycle.tasks.map(t => (
           <div
             key={t.id}
-            className="flex items-start gap-3 px-4 py-3.5"
-            style={{ borderBottom: i < cycle.tasks.length - 1 ? '1px solid #222' : 'none' }}
+            className="flex items-start py-4"
+            style={{ borderBottom: '1px solid #141414' }}
           >
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-primary">{t.name}</p>
-              {t.why && <p className="text-xs text-muted mt-0.5 truncate">{t.why}</p>}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontFamily: 'Inter', fontSize: 15, color: '#FFF', marginBottom: t.why ? 3 : 0 }}>{t.name}</p>
+              {t.why && <p style={{ fontFamily: 'Inter', fontSize: 12, color: '#444' }}>{t.why}</p>}
             </div>
-            <span className="font-mono text-[10px] text-muted shrink-0 mt-0.5">{PILLAR_LABEL[t.pillar]}</span>
+            <span style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', color: '#555', marginLeft: 16, marginTop: 3 }}>
+              {PILLAR_LABEL[t.pillar]}
+            </span>
           </div>
         ))}
       </div>
@@ -53,23 +81,25 @@ function ActiveCycleView({ cycle, onNewCycle }) {
       {!confirm ? (
         <button
           onClick={() => setConfirm(true)}
-          className="w-full py-3 border border-border rounded font-mono text-xs text-muted tracking-wide"
+          style={{ width: '100%', padding: '16px 0', background: 'transparent', border: '1px solid #222', borderRadius: 8, fontFamily: 'Inter', fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', color: '#555' }}
         >
           NUEVO CICLO
         </button>
       ) : (
-        <div className="border border-border rounded-lg p-4">
-          <p className="text-sm text-primary mb-4">¿Terminar este ciclo y archivar los datos?</p>
+        <div style={{ border: '1px solid #1C1C1C', borderRadius: 8, padding: 20 }}>
+          <p style={{ fontFamily: 'Inter', fontSize: 14, color: '#FFF', marginBottom: 20 }}>
+            ¿Terminar este ciclo y archivar los datos?
+          </p>
           <div className="flex gap-3">
             <button
               onClick={() => setConfirm(false)}
-              className="flex-1 py-2.5 border border-border rounded font-mono text-xs text-muted"
+              style={{ flex: 1, padding: '13px 0', border: '1px solid #222', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', color: '#555', background: 'transparent' }}
             >
               CANCELAR
             </button>
             <button
               onClick={onNewCycle}
-              className="flex-1 py-2.5 bg-missed rounded font-mono text-xs text-white"
+              style={{ flex: 1, padding: '13px 0', background: '#EF4444', border: 'none', borderRadius: 6, fontFamily: 'Inter', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', color: '#FFF' }}
             >
               TERMINAR
             </button>
@@ -78,10 +108,6 @@ function ActiveCycleView({ cycle, onNewCycle }) {
       )}
     </div>
   )
-}
-
-function emptyTask() {
-  return { id: genId(), name: '', pillar: 'fisico', why: '' }
 }
 
 export default function Config({ onCycleStarted }) {
@@ -122,68 +148,56 @@ export default function Config({ onCycleStarted }) {
   }
 
   return (
-    <div className="overflow-y-auto h-full px-5 py-6">
-      <p className="font-mono text-[10px] text-muted tracking-widest mb-5">NUEVO CICLO</p>
+    <div className="overflow-y-auto h-full px-6 py-8">
+      <p style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 600, letterSpacing: '0.14em', color: '#555', marginBottom: 28 }}>
+        NUEVO CICLO
+      </p>
 
-      <div className="space-y-4 mb-7">
+      <div style={{ marginBottom: 28, display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div>
-          <label className="font-mono text-[10px] text-muted tracking-wider block mb-1.5">NOMBRE</label>
-          <input
-            type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-primary font-sans focus:outline-none focus:border-accent"
-          />
+          <label style={labelStyle}>NOMBRE</label>
+          <input type="text" value={name} onChange={e => setName(e.target.value)} style={inputStyle} />
         </div>
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <label className="font-mono text-[10px] text-muted tracking-wider block mb-1.5">DURACIÓN (DÍAS)</label>
-            <input
-              type="number"
-              min="1"
-              max="365"
-              value={duration}
-              onChange={e => setDuration(e.target.value)}
-              className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-primary font-mono focus:outline-none focus:border-accent"
-            />
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <label style={labelStyle}>DURACIÓN (DÍAS)</label>
+            <input type="number" min="1" max="365" value={duration} onChange={e => setDuration(e.target.value)} style={inputStyle} />
           </div>
-          <div className="flex-1">
-            <label className="font-mono text-[10px] text-muted tracking-wider block mb-1.5">INICIO</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={e => setStartDate(e.target.value)}
-              className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-primary font-mono focus:outline-none focus:border-accent"
-            />
+          <div style={{ flex: 1 }}>
+            <label style={labelStyle}>INICIO</label>
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={inputStyle} />
           </div>
         </div>
       </div>
 
-      <p className="font-mono text-[10px] text-muted tracking-widest mb-3">TAREAS</p>
+      <p style={{ ...labelStyle, marginBottom: 16 }}>TAREAS</p>
 
-      <div className="space-y-2 mb-3">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
         {tasks.map((task, i) => (
-          <div key={task.id} className="border border-border rounded-lg p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-xs text-muted w-5 shrink-0">{i + 1}</span>
+          <div
+            key={task.id}
+            style={{ border: '1px solid #1C1C1C', borderRadius: 8, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontFamily: 'Inter', fontSize: 12, color: '#444', width: 18 }}>{i + 1}</span>
               <input
                 type="text"
                 placeholder="Nombre de la tarea"
                 value={task.name}
                 onChange={e => updateTask(task.id, 'name', e.target.value)}
-                className="flex-1 bg-bg border border-border rounded px-3 py-2 text-sm text-primary font-sans focus:outline-none focus:border-accent"
+                style={{ ...inputStyle, flex: 1, padding: '10px 12px', fontSize: 14 }}
               />
               {tasks.length > 1 && (
-                <button onClick={() => removeTask(task.id)} className="text-muted hover:text-missed shrink-0">
+                <button onClick={() => removeTask(task.id)} style={{ color: '#333', flexShrink: 0 }}>
                   <X size={14} />
                 </button>
               )}
             </div>
-            <div className="flex gap-2 pl-7">
+            <div style={{ display: 'flex', gap: 8, paddingLeft: 28 }}>
               <select
                 value={task.pillar}
                 onChange={e => updateTask(task.id, 'pillar', e.target.value)}
-                className="bg-bg border border-border rounded px-2 py-1.5 text-xs font-mono text-primary focus:outline-none focus:border-accent"
+                style={{ background: '#000', border: '1px solid #1C1C1C', borderRadius: 6, padding: '8px 10px', fontFamily: 'Inter', fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', color: '#FFF', outline: 'none' }}
               >
                 {PILLARS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
               </select>
@@ -193,7 +207,7 @@ export default function Config({ onCycleStarted }) {
                 value={task.why}
                 maxLength={80}
                 onChange={e => updateTask(task.id, 'why', e.target.value)}
-                className="flex-1 bg-bg border border-border rounded px-2 py-1.5 text-xs text-muted font-sans focus:outline-none focus:border-accent focus:text-primary"
+                style={{ ...inputStyle, flex: 1, padding: '8px 10px', fontSize: 13, color: '#888' }}
               />
             </div>
           </div>
@@ -202,21 +216,23 @@ export default function Config({ onCycleStarted }) {
 
       <button
         onClick={addTask}
-        className="w-full py-2.5 border border-dashed border-border rounded-lg font-mono text-xs text-muted mb-7 active:opacity-60"
+        style={{ width: '100%', padding: '13px 0', background: 'transparent', border: '1px dashed #222', borderRadius: 8, fontFamily: 'Inter', fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', color: '#444', marginBottom: 28 }}
       >
         + AGREGAR TAREA
       </button>
 
-      {error && <p className="text-xs font-mono text-missed mb-3">{error}</p>}
+      {error && (
+        <p style={{ fontFamily: 'Inter', fontSize: 12, color: '#EF4444', marginBottom: 12 }}>{error}</p>
+      )}
 
       <button
         onClick={handleStart}
-        className="w-full py-3.5 bg-accent rounded-lg font-mono text-xs text-white tracking-widest active:opacity-70"
+        style={{ width: '100%', padding: '17px 0', background: '#FFF', borderRadius: 8, fontFamily: 'Inter', fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', color: '#000', border: 'none' }}
       >
         INICIAR CICLO
       </button>
 
-      <div className="h-6" />
+      <div style={{ height: 32 }} />
     </div>
   )
 }
