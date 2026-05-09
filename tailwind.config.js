@@ -4,12 +4,13 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: '#0F172A',
-        surface: '#1E293B',
-        border: '#334155',
+        bg: '#000000',
+        surface: '#111111',
+        'surface-2': '#1A1A1A',
+        border: '#222222',
         accent: '#3B82F6',
-        primary: '#F8FAFC',
-        muted: '#64748B',
+        primary: '#FFFFFF',
+        muted: '#555555',
         done: '#22C55E',
         missed: '#EF4444',
         rescued: '#F59E0B',

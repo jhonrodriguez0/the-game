@@ -27,11 +27,21 @@ export function addDays(dateStr, n) {
   return d.toISOString().split('T')[0]
 }
 
+const DEFAULT_METRIC_DEFS = [
+  { id: 'def_weight', name: 'Peso', unit: 'kg' },
+  { id: 'def_sleep', name: 'Sueño', unit: 'h' },
+]
+
 const StoreContext = createContext(null)
 
 export function StoreProvider({ children }) {
   const [cycle, setCycleState] = useState(() => loadLS('tg_cycle', null))
-  const [metrics, setMetricsState] = useState(() => loadLS('tg_metrics', []))
+  // [{date, metricId, value}]
+  const [metrics, setMetricsState] = useState(() => loadLS('tg_metrics_v2', []))
+  // [{id, name, unit}]
+  const [metricDefs, setMetricDefsState] = useState(
+    () => loadLS('tg_metric_defs', DEFAULT_METRIC_DEFS)
+  )
   const [history, setHistoryState] = useState(() => loadLS('tg_history', []))
 
   const autoClosePastDays = useCallback(() => {
@@ -40,7 +50,6 @@ export function StoreProvider({ children }) {
       const today = todayStr()
       let changed = false
       const log = { ...prev.log }
-
       Object.keys(log).forEach(date => {
         if (date < today) {
           const dayLog = { ...log[date] }
@@ -51,13 +60,9 @@ export function StoreProvider({ children }) {
               dayChanged = true
             }
           })
-          if (dayChanged) {
-            log[date] = dayLog
-            changed = true
-          }
+          if (dayChanged) { log[date] = dayLog; changed = true }
         }
       })
-
       if (!changed) return prev
       const updated = { ...prev, log }
       saveLS('tg_cycle', updated)
@@ -83,10 +88,7 @@ export function StoreProvider({ children }) {
       if (!prev) return prev
       const updated = {
         ...prev,
-        log: {
-          ...prev.log,
-          [date]: { ...prev.log[date], [taskId]: status }
-        }
+        log: { ...prev.log, [date]: { ...prev.log[date], [taskId]: status } }
       }
       saveLS('tg_cycle', updated)
       return updated
@@ -113,20 +115,45 @@ export function StoreProvider({ children }) {
     })
   }, [])
 
-  const saveMetric = useCallback((entry) => {
+  const saveMetricValue = useCallback((date, metricId, value) => {
     setMetricsState(prev => {
-      const filtered = prev.filter(m => m.date !== entry.date)
-      const updated = [...filtered, entry].sort((a, b) => a.date.localeCompare(b.date))
-      saveLS('tg_metrics', updated)
+      const filtered = prev.filter(m => !(m.date === date && m.metricId === metricId))
+      const updated = value !== '' && value != null
+        ? [...filtered, { date, metricId, value: parseFloat(value) }]
+        : filtered
+      updated.sort((a, b) => a.date.localeCompare(b.date) || a.metricId.localeCompare(b.metricId))
+      saveLS('tg_metrics_v2', updated)
+      return updated
+    })
+  }, [])
+
+  const addMetricDef = useCallback((name, unit) => {
+    setMetricDefsState(prev => {
+      const updated = [...prev, { id: genId(), name: name.trim(), unit: unit.trim() }]
+      saveLS('tg_metric_defs', updated)
+      return updated
+    })
+  }, [])
+
+  const removeMetricDef = useCallback((id) => {
+    setMetricDefsState(prev => {
+      const updated = prev.filter(d => d.id !== id)
+      saveLS('tg_metric_defs', updated)
+      return updated
+    })
+    setMetricsState(prev => {
+      const updated = prev.filter(m => m.metricId !== id)
+      saveLS('tg_metrics_v2', updated)
       return updated
     })
   }, [])
 
   return (
     <StoreContext.Provider value={{
-      cycle, metrics, history,
+      cycle, metrics, metricDefs, history,
       autoClosePastDays, initTodayLog, markTask,
-      startCycle, closeCycle, saveMetric
+      startCycle, closeCycle,
+      saveMetricValue, addMetricDef, removeMetricDef,
     }}>
       {children}
     </StoreContext.Provider>
