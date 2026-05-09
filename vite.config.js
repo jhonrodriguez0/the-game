@@ -7,11 +7,16 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
+      },
       manifest: {
         name: 'The Game',
         short_name: 'THE GAME',
-        theme_color: '#0F172A',
-        background_color: '#0F172A',
+        theme_color: '#000000',
+        background_color: '#000000',
         display: 'standalone',
         orientation: 'portrait',
         icons: [
